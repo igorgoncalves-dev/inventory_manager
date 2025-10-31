@@ -5,6 +5,8 @@ import uvicorn
 from database import engine, Base
 
 from models.user import user_model
+from models.machine import machine_model
+from models.smartphone import smartphone_model
 
 
 # Lifecycle control
