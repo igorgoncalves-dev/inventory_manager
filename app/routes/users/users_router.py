@@ -90,20 +90,36 @@ users = [
 
 @users_router.get("/")
 def get_users():
+    """ Rota responsável pela recuperação de todos os registros da tabela USERS """
     return users
 
 @users_router.get("/{user_id}")
 def get_user_by_id(user_id: int):
+    """ Rota responsável pela recuperação de registros específicos da tabela USERS, utilizando o ID como fonte de busca """
 
     for user in users:
         if user["id"] == user_id:
             print(user["name"])
             return user
         
-"""     raise HTTPException(
+    raise HTTPException(
         status_code=404,
         detail={
             "status_code": 404,
             "message": f"O usuário com id {user_id} não foi encontrado"
         }
-    ) """
+    )
+
+@users_router.post("/create-user")
+def create_user():
+    pass
+
+
+@users_router.put("/update-user/{user_id}")
+def update_user(user_id: int):
+    pass
+
+@users_router.delete("/delete-user/{user_id}")
+def delete_user(user_id: int):
+    pass
+

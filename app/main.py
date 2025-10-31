@@ -1,10 +1,27 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uvicorn
+
+from database import engine, Base
+
+from models.user import user_model
+
+
+# Lifecycle control
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print(f"Application started: {app}")
+    Base.metadata.create_all(bind=engine)
+
+    yield
+    print(f"Application closed: {app}")
+
 
 # Creating a new API instance
 app = FastAPI(
     title="Inventory Manager",
-    version="0.1.0"
+    version="0.2.0",
+    lifespan=lifespan
 )
 
 # Importing Routes
