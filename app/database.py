@@ -12,17 +12,24 @@ engine = create_engine(
     future=True
 )
 
-""" # Session Manager
+# Session Manager
 SessionLocal = sessionmaker(
     bind=engine,
     autocommit=False,
     autoflush=False,
 )
- """
+
 
 # Declarative Base for Models
 Base = declarative_base()
 
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 

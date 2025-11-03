@@ -1,125 +1,74 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sentry_sdk import HttpTransport
+
+from schemas.user.create_user_schema import CreateUser, CreateUserResponse
+from database import get_db
+from sqlalchemy.orm import Session
+from models.user.user_model import User
 
 users_router = APIRouter(
     prefix="/users", 
     tags=["users"]
 )
 
-users = [
-    {
-        "id": 1,
-        "name": "Igor Almeida",
-        "mail": "igor.almeida@example.com",
-        "device_id": "DEV-1001",
-        "smartphone_id": "SM-5001",
-        "status": "active"
-    },
-    {
-        "id": 2,
-        "name": "Maria Santos",
-        "mail": "maria.santos@example.com",
-        "device_id": "DEV-1002",
-        "smartphone_id": "SM-5002",
-        "status": "inactive"
-    },
-    {
-        "id": 3,
-        "name": "João Oliveira",
-        "mail": "joao.oliveira@example.com",
-        "device_id": "DEV-1003",
-        "smartphone_id": "SM-5003",
-        "status": "active"
-    },
-    {
-        "id": 4,
-        "name": "Carla Souza",
-        "mail": "carla.souza@example.com",
-        "device_id": "DEV-1004",
-        "smartphone_id": "SM-5004",
-        "status": "blocked"
-    },
-    {
-        "id": 5,
-        "name": "Bruno Lima",
-        "mail": "bruno.lima@example.com",
-        "device_id": "DEV-1005",
-        "smartphone_id": "SM-5005",
-        "status": "active"
-    },
-    {
-        "id": 6,
-        "name": "Fernanda Castro",
-        "mail": "fernanda.castro@example.com",
-        "device_id": "DEV-1006",
-        "smartphone_id": "SM-5006",
-        "status": "inactive"
-    },
-    {
-        "id": 7,
-        "name": "Lucas Pereira",
-        "mail": "lucas.pereira@example.com",
-        "device_id": "DEV-1007",
-        "smartphone_id": "SM-5007",
-        "status": "active"
-    },
-    {
-        "id": 8,
-        "name": "Patrícia Gomes",
-        "mail": "patricia.gomes@example.com",
-        "device_id": "DEV-1008",
-        "smartphone_id": "SM-5008",
-        "status": "active"
-    },
-    {
-        "id": 9,
-        "name": "Ricardo Barbosa",
-        "mail": "ricardo.barbosa@example.com",
-        "device_id": "DEV-1009",
-        "smartphone_id": "SM-5009",
-        "status": "inactive"
-    },
-    {
-        "id": 10,
-        "name": "Amanda Ferreira",
-        "mail": "amanda.ferreira@example.com",
-        "device_id": "DEV-1010",
-        "smartphone_id": "SM-5010",
-        "status": "active"
-    }
-]
-
 @users_router.get("/")
-def get_users():
+def get_users(db: Session = Depends(get_db)):
     """ Rota responsável pela recuperação de todos os registros da tabela USERS """
+
+    users = db.query(User).all()
+
     return users
 
 @users_router.get("/{user_id}")
 def get_user_by_id(user_id: int):
     """ Rota responsável pela recuperação de registros específicos da tabela USERS, utilizando o ID como fonte de busca """
-
-    for user in users:
-        if user["id"] == user_id:
-            print(user["name"])
-            return user
-        
-    raise HTTPException(
-        status_code=404,
-        detail={
-            "status_code": 404,
-            "message": f"O usuário com id {user_id} não foi encontrado"
-        }
-    )
-
-@users_router.post("/create-user")
-def create_user():
     pass
 
+@users_router.post("/create-user", response_model=CreateUserResponse)
+async def create_user(user: CreateUser, db: Session = Depends(get_db)):
+
+
+    if not user:
+        raise HTTPException(
+            status_code=403, 
+            detail={
+                "message": f"Invalid data"
+            }
+        )
+    
+    new_user = User(
+        name= user.name,
+        surname= user.surname,
+        email=user.email,
+        cost_center=user.cost_center,
+    )
+
+    db.add(new_user)
+    db.commit()
+
+    response = CreateUserResponse(
+        display_name= f"{new_user.name} {new_user.surname}",
+        email= new_user.email
+    )      
+
+    return response
 
 @users_router.put("/update-user/{user_id}")
 def update_user(user_id: int):
     pass
 
 @users_router.delete("/delete-user/{user_id}")
-def delete_user(user_id: int):
-    pass
+def delete_user(user_id: int, db: Session = Depends(get_db)):
 
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HttpTransport(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    db.delete(user)
+    db.commit()
+
+    return {"message": f"User {user.name} removido com sucesso"}
