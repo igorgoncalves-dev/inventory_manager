@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sentry_sdk import HttpTransport
 
-from schemas.user.create_user_schema import CreateUser, CreateUserResponse
-from database import get_db
+from schemas.user.user_schemas import CreateUserSchema, UpdateUserSchema, UserResponseSchema
+from database import session_db
 from sqlalchemy.orm import Session
 from models.user.user_model import User
 
@@ -12,25 +11,41 @@ users_router = APIRouter(
 )
 
 @users_router.get("/")
-def get_users(db: Session = Depends(get_db)):
+async def get_users(db: Session = Depends(session_db)):
     """ Rota responsável pela recuperação de todos os registros da tabela USERS """
 
     users = db.query(User).all()
 
+    if not len(users) > 0:
+        raise HTTPException(400, detail={
+            "message": "There isn't users in database"
+        })
+
     return users
 
 @users_router.get("/{user_id}")
-def get_user_by_id(user_id: int):
+async def get_user_by_id(user_id: int, db: Session = Depends(session_db)):
     """ Rota responsável pela recuperação de registros específicos da tabela USERS, utilizando o ID como fonte de busca """
-    pass
+    
+    user = db.query(User).filter(User.id == user_id).first()
 
-@users_router.post("/create-user", response_model=CreateUserResponse)
-async def create_user(user: CreateUser, db: Session = Depends(get_db)):
+    if not user:
+        raise HTTPException(404, detail={
+            "message": "User not found"
+        })
 
+    return {
+        "user": user,
+        "message": f"Users {user.email} founded!"
+        }
+    
+@users_router.post("/create-user", response_model=UserResponseSchema)
+async def create_user(user: CreateUserSchema, db: Session = Depends(session_db)):
+    """ Rota responsável pela criação de novos usuários na aplicação """
 
     if not user:
         raise HTTPException(
-            status_code=403, 
+            status_code=400, 
             detail={
                 "message": f"Invalid data"
             }
@@ -41,29 +56,40 @@ async def create_user(user: CreateUser, db: Session = Depends(get_db)):
         surname= user.surname,
         email=user.email,
         cost_center=user.cost_center,
+        machine_id=user.machine_id,
+        smartphone_id=user.smartphone_id
     )
 
     db.add(new_user)
-    db.commit()
+    db.commit()      
 
-    response = CreateUserResponse(
-        display_name= f"{new_user.name} {new_user.surname}",
-        email= new_user.email
-    )      
-
-    return response
+    return new_user
 
 @users_router.put("/update-user/{user_id}")
-def update_user(user_id: int):
-    pass
+def update_user(user_id: int, user: UpdateUserSchema, db: Session = Depends(session_db)):
+
+    user_db = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(404, detail={
+            "message": "User not found"
+        })
+    
+    for key, value in user.model_dump(exclude_unset=True).items():
+        setattr(user_db, key, value)
+
+    db.commit()
+    db.refresh(user_db)
+
+    return user_db
 
 @users_router.delete("/delete-user/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, db: Session = Depends(session_db)):
 
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
-        raise HttpTransport(
+        raise HTTPException(
             status_code=404,
             detail="User not found"
         )
@@ -71,4 +97,4 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(user)
     db.commit()
 
-    return {"message": f"User {user.name} removido com sucesso"}
+    return {"message": f"User {user.name} has removed successfully"}
