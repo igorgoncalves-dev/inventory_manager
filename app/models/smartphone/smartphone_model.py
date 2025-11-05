@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from database import Base
 
 class Smartphone(Base):
@@ -17,7 +17,9 @@ class Smartphone(Base):
     puk_1 = Column(String(10), nullable=False)
     puk_2 = Column(String(10), nullable=False)
     location = Column(String(2), nullable=False)
-    owner_id = Column(String(100), ForeignKey("users.id") ,nullable=True, unique=True) 
+    user_id = Column(Integer, ForeignKey("users.id"), default=None)
+    is_active = Column(Boolean, nullable=False, default=True)
+    status = Column(String, nullable=False, default="AVAILABLE" )
 
     def to_dict(self):
         return {
@@ -33,5 +35,7 @@ class Smartphone(Base):
             "puk_1": self.puk_1,
             "puk_2": self.puk_2,
             "location": self.location,
-            "owner": self.owner
+            "user_id": self.owner,
+            "is_active": self.is_active,
+            "status": self.status,
         }
