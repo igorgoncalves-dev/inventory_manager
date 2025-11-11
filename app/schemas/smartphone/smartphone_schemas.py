@@ -14,7 +14,7 @@ class SmartphoneBaseSchema(BaseModel):
     pin_2: Optional[str] = Field(None, min_length=4, max_length=4, description="PIN 2 do Chip")
     puk_1: Optional[str] = Field(None, min_length=4, max_length=4, description="PUK 1 do Chip")
     puk_2: Optional[str] = Field(None, min_length=4, max_length=4, description="PUK 2 do Chip")
-    location: str = Field(..., min_length=2, max_length=2, description="Localização")
+    location: Optional[str] = Field(..., min_length=2, max_length=2, description="Localização")
     user_id: Optional[int] = None
     is_active: bool = True
     status: Optional[DeviceStatus] = Field(..., min_length=1, max_length=10, description="Situação atual do dispositivo")
