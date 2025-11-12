@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from utils.functions.db_check_uniqueness import db_check_uniqueness
 from database import session_db
 from models.machine.machine_model import Machine
 from schemas.machine.machine_schemas import CreateMachineSchema, UpdateMachineSchema
@@ -34,33 +35,25 @@ def get_machine_by_id(machine_id: int, db: Session = Depends(session_db)):
 
 @machines_router.post("/create-machine")
 def create_machine(machine: CreateMachineSchema, db: Session = Depends(session_db)):
+    """ Rota responsável pela criação de uma nova Máquina no banco de dados """
 
-    hostname_exist = db.query(Machine).filter(Machine.hostname == machine.hostname).first()
-    if hostname_exist:
-        raise HTTPException(400, detail={
-            "message": "HOSTNAME already exist in the database"
-        })
+    # Verificação de Campos Unicos no Banco
+    unique_fields = {
+        "hostname": machine.hostname,
+        "serial_number": machine.serial_number,
+        "mac_address": machine.mac_address,
+        "mac_address_wifi": machine.mac_address_wifi
+    }
 
-    serial_number_exist = db.query(Machine).filter(Machine.serial_number == machine.serial_number).first()
-    if serial_number_exist:
-        raise HTTPException(400, detail={
-            "message": "SERIAL NUMBER already exist in the database"
-        })
+    for key, value in unique_fields.items():
+        db_check_uniqueness(
+            db= db,
+            table_name=Machine,
+            table_column=key,
+            value=value
+        ) 
     
-    if machine.mac_address is not None:
-        mac_address_exist = db.query(Machine).filter(Machine.mac_address == machine.mac_address).first()
-        if mac_address_exist:
-            raise HTTPException(400, detail={
-                "message": "MAC ADDRESS already exist in the database"
-            })
-    
-    if machine.mac_address_wifi is not None:
-        mac_address_wifi_exist = db.query(Machine).filter(Machine.mac_address_wifi == machine.mac_address_wifi).first()
-        if mac_address_wifi_exist:
-            raise HTTPException(400, detail={
-                "message": "WIFI MAC ADRESS already exist in the database"
-            }) 
-    
+    # Inserindo os novos dados no banco
     new_machine = Machine(**machine.model_dump(exclude_unset=True))
 
     try:
@@ -83,12 +76,36 @@ def update_machine(machine_id: int, machine: UpdateMachineSchema, db: Session = 
 
     machine_db = db.get(Machine, machine_id)
 
-    if not machine:
+    if not machine_db:
         raise HTTPException(404, detail={
             "message": f"Machine with ID {machine_id} not found"
         })
     
-    for key, value in machine.model_dump(exclude_unset=True).items():
+    # Verificação de Campos Unicos no Banco
+    unique_fields = {
+        "hostname": machine.hostname,
+        "serial_number": machine.serial_number,
+        "mac_address": machine.mac_address,
+        "mac_address_wifi": machine.mac_address_wifi
+    }
+
+    for key, value in unique_fields.items():
+        db_check_uniqueness(
+            db= db,
+            table_name=Machine,
+            table_column=key,
+            value=value
+        ) 
+
+    # Validação dos campos enviados no JSON do Front
+    validation = {k: v for k, v in machine.model_dump(exclude_unset=True).items() if k in UpdateMachineSchema.model_fields}    
+
+    if not validation:
+        raise HTTPException(400, detail={
+            "message": "There are no valid data"
+        })
+
+    for key, value in validation.items():
         setattr(machine_db, key, value)
 
     try:

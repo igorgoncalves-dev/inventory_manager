@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from utils.functions.db_check_uniqueness import db_check_uniqueness
 from schemas.smartphone.smartphone_schemas import CreateSmartphoneSchema, ResponseSmartphoneSchema, UpdateSmartphoneSchema
 from database import session_db
 from models.smartphone.smartphone_model import Smartphone
@@ -37,22 +38,22 @@ def get_smartphone_by_id(smartphone_id: int, db: Session = Depends(session_db)):
 def create_smartphone(smartphone: CreateSmartphoneSchema, db: Session = Depends(session_db)):
     """ Rota responsável pela criação de um novo Smartphone no banco de dados """
     
-    # Verificar IMEI
-    exist_imei = db.query(Smartphone).filter(Smartphone.imei == smartphone.imei).first()
-    if exist_imei:
-        raise HTTPException(status_code=400, detail={"message": "IMEI already exists"})
+    # Verificação de Campos Unicos no Banco
+    unique_fields = {
+        "imei": smartphone.imei,
+        "number": smartphone.number,
+        "user_id": smartphone.user_id
+    }
 
-    # Verificar número
-    exist_number = db.query(Smartphone).filter(Smartphone.number == smartphone.number).first()
-    if exist_number:
-        raise HTTPException(status_code=400, detail={"message": "Number already exists"})
+    for key, value in unique_fields.items():
+        db_check_uniqueness(
+            db= db,
+            table_name=Smartphone,
+            table_column=key,
+            value=value
+        )
 
-        # Verificar user_id
-    if smartphone.user_id is not None:
-        exist_user_id = db.query(Smartphone).filter(Smartphone.user_id == smartphone.user_id).first()
-        if exist_user_id:
-            raise HTTPException(status_code=400, detail={"message": "User already has a smartphone"})
-
+    # Inserindo os novos dados no banco
     smartphone_db = Smartphone(**smartphone.model_dump(exclude_unset=True))
 
     try:
@@ -79,8 +80,23 @@ def update_smartphone(smartphone_id: int, smartphone: UpdateSmartphoneSchema, db
         raise HTTPException(404, detail={
             "message": f"Smartphone with ID {smartphone_id} not found"
         })
-    
-    # Validação do JSON recebido
+        
+    # Verificação de Campos Unicos no Banco
+    unique_fields = {
+        "imei": smartphone.imei,
+        "number": smartphone.number,
+        "user_id": smartphone.user_id
+    }
+
+    for key, value in unique_fields.items():
+        db_check_uniqueness(
+            db= db,
+            table_name=Smartphone,
+            table_column=key,
+            value=value
+        )
+
+    # Validação dos campos enviados no JSON do Front
     validation = {k: v for k, v in smartphone.model_dump(exclude_unset=True).items() if k in UpdateSmartphoneSchema.model_fields}
 
     if not validation:
