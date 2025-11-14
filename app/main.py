@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 # Creating a new API instance
 app = FastAPI(
     title="Inventory Manager",
-    version="0.2.6",
+    version="0.2.7",
     lifespan=lifespan
 )
 

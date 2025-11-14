@@ -5,8 +5,12 @@ from sqlalchemy.orm import Session
 from database import session_db
 
 from models.user.user_model import User
-from schemas.user.user_schemas import CreateUserSchema, CreateUserSchemaResponse, UpdateUserSchema
+# from schemas.user.user_schemas import CreateUserSchema, CreateUserSchemaResponse, UpdateUserSchema
+from schemas.user.user_schemas import CreateUserRequest, CreateUserResponse, UpdateUserRequest, UpdateUserResponse
+
 from utils.functions.db_check_uniqueness import db_check_uniqueness
+
+from datetime import datetime
 
 
 users_router = APIRouter(
@@ -44,8 +48,8 @@ async def get_user_by_id(user_id: int, db: Session = Depends(session_db)):
 
 
 
-@users_router.post("/create-user", response_model=CreateUserSchemaResponse)
-async def create_user(user: CreateUserSchema, db: Session = Depends(session_db)):
+@users_router.post("/create-user", response_model=CreateUserResponse)
+async def create_user(user: CreateUserRequest, db: Session = Depends(session_db)):
     """ Rota responsável pela criação de novos usuários na aplicação """
     
     # Verificação de Campos Unicos no Banco
@@ -77,14 +81,16 @@ async def create_user(user: CreateUserSchema, db: Session = Depends(session_db))
             "message": f"Database error: {e}"
         })      
 
-    return new_user
+    return new_user, {
+        "timestamp": datetime.now() 
+    }
 
 
 
 
 
-@users_router.put("/update-user/{user_id}")
-def update_user(user_id: int, user: UpdateUserSchema, db: Session = Depends(session_db)):
+@users_router.put("/update-user/{user_id}", response_model=UpdateUserResponse)
+def update_user(user_id: int, user: UpdateUserRequest, db: Session = Depends(session_db)):
 
     user_db = db.get(User, user_id)
 
@@ -109,7 +115,7 @@ def update_user(user_id: int, user: UpdateUserSchema, db: Session = Depends(sess
             value=value
         )
 
-    validation = {k: v for k, v in user.model_dump(exclude_unset=True).items() if k in UpdateUserSchema.model_fields}
+    validation = {k: v for k, v in user.model_dump(exclude_unset=True).items() if k in UpdateUserRequest.model_fields}
 
     if not validation:
         raise HTTPException(400, detail={
@@ -130,7 +136,7 @@ def update_user(user_id: int, user: UpdateUserSchema, db: Session = Depends(sess
             "message": f"Database error: {e}"
         })
 
-    return user_db
+    return user_db, {"timestamp": datetime.now()}
 
 
 
